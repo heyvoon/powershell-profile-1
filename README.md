@@ -11,13 +11,7 @@ To install this profile, just drop it in your default PowerShell config director
 $profileFolder = split-path $profile;
 
 if (-not Test-Path $profile) {
-    if ($IsLinux -or $IsOSX) {
-        mkdir -p $profileFolder;
-        touch $profile;
-    } else {
-        New-Item -ItemType directory -Path $profileFolder -ErrorAction ignore;
-        New-Item file $profile;
-    }
+    New-Item -ItemType directory -Path $profileFolder -ErrorAction ignore;
 }
 
 # This will overwite whatever profile is there already:
