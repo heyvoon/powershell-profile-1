@@ -10,7 +10,7 @@ To install this profile, just drop it in your default PowerShell config director
 ```ps
 $profileFolder = split-path $profile;
 
-if (-not Test-Path $profile) {
+if (-not (Test-Path $profile)) {
     New-Item -ItemType directory -Path $profileFolder -ErrorAction ignore;
 }
 
