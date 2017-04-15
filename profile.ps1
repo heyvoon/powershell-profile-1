@@ -99,7 +99,8 @@ $jumpLocationImported = Load-Module "jump.location";
 $poshGitImported = Load-Module "posh-git";
 
 if (Test-Path "$profileFolder/powerls.psm1") {
-	$powerLsImported = Import-Module "$profileFolder/powerls.psm1";
+	Import-Module "$profileFolder/powerls.psm1";
+	$powerLsImported = $true;
 } else {
 	$powerLsImported = Load-Module "powerls";
 }
