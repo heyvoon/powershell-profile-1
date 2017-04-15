@@ -60,6 +60,10 @@ function Load-Module
     )
 
     $retVal = $true
+	
+	function write-loadError() {
+		write-host -foregroundcolor yellow "Failed to import $name on $machineType machine. Please install the module via OneGet, or download the script and place it in $profileFolder.";
+	}
 
     if (!(Get-Module -Name $name))
     {
@@ -76,9 +80,13 @@ function Load-Module
             {
                 $retVal = $false
 
-				write-host -foregroundcolor yellow "Failed to import $name on $machineType machine. Please install the module via OneGet, or download the script and place it in $profileFolder.";
+				write-loadError;
             }
         }
+		else 
+		{
+			write-loadError;	
+		}
     }
 
     return $retVal
