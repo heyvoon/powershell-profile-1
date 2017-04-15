@@ -62,7 +62,7 @@ function Load-Module
     $retVal = $true
 	
 	function write-loadError() {
-		write-host -foregroundcolor yellow "Failed to import $name on $machineType machine. Please install the module via OneGet, or download the script and place it in $profileFolder.";
+		write-host -foregroundcolor yellow "Failed to import $name on $machineType machine. Please install the module via OneGet: 'install-module $name'.";
 	}
 
     if (!(Get-Module -Name $name))
@@ -96,8 +96,13 @@ function Load-Module
 # https://github.com/Pscx/Pscx/issues/16
 $pscxImported = Load-Module "Pscx";
 $jumpLocationImported = Load-Module "jump.location";
-$powerLsImported = Load-Module "powerls";
 $poshGitImported = Load-Module "posh-git";
+
+if (Test-Path "$profileFolder/powerls.psm1") {
+	$powerLsImported = Import-Module "$profileFolder/powerls.psm1";
+} else {
+	$powerLsImported = Load-Module "powerls";
+}
 
 # Add program folders to the path
 if ($pscxImported) {
