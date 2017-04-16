@@ -83,6 +83,12 @@ function Load-Module
 				write-loadError;
             }
         }
+		# Try to find the module by checking the profileFolder and appending .psm1
+		elseif (Test-Path "$profileFolder/$name.psm1") 
+		{
+			Import-Module "$profileFolder/$name.psm1";
+			$retVal = $true;
+		}
 		else 
 		{
 			write-loadError;	
@@ -97,13 +103,8 @@ function Load-Module
 $pscxImported = Load-Module "Pscx";
 $jumpLocationImported = Load-Module "jump.location";
 $poshGitImported = Load-Module "posh-git";
-
-if (Test-Path "$profileFolder/powerls.psm1") {
-	Import-Module "$profileFolder/powerls.psm1";
-	$powerLsImported = $true;
-} else {
-	$powerLsImported = Load-Module "powerls";
-}
+$powerLsImported = Load-Module "powerls";
+$outDiffImported = Load-Module "out-diff";
 
 # Add program folders to the path
 if ($pscxImported) {
