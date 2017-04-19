@@ -1,3 +1,5 @@
+write-host "Loading powershell profile.";
+
 # Powershell lacks a null-coalescing (??) operator, so this function makes up for it.
 function Coalesce($a, $b) { if ($a -ne $null) { $a } else { $b } }
 
