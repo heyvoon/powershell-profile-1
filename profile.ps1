@@ -102,7 +102,7 @@ function Load-Module
 
 # PSCX is not supported on Linux or OSX yet. 
 # https://github.com/Pscx/Pscx/issues/16
-$pscxImported = Load-Module "Pscx";
+# $pscxImported = Load-Module "Pscx";
 $jumpLocationImported = Load-Module "jump.location";
 $poshGitImported = Load-Module "posh-git";
 $powerLsImported = Load-Module "powerls";
