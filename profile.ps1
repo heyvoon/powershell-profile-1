@@ -55,72 +55,6 @@ function prompt {
 	$LASTEXITCODE = $origLastExitCode;
 }
 
-function Load-Module
-{
-    param (
-        [parameter(Mandatory = $true)][string] $name
-    )
-
-    $retVal = $true
-	
-	function write-loadError() {
-		write-host -foregroundcolor yellow "Failed to import $name on $machineType machine. Please install the module via OneGet: 'install-module $name'.";
-	}
-
-    if (!(Get-Module -Name $name))
-    {
-        $retVal = Get-Module -ListAvailable | where { $_.Name -eq $name }
-
-        if ($retVal)
-        {
-            try
-            {
-                Import-Module $name -ErrorAction SilentlyContinue
-            }
-
-            catch
-            {
-                $retVal = $false
-
-				write-loadError;
-            }
-        }
-		# Try to find the module by checking the profileFolder and appending .psm1
-		elseif (Test-Path "$profileFolder/$name.psm1") 
-		{
-			Import-Module "$profileFolder/$name.psm1";
-			$retVal = $true;
-		}
-		else 
-		{
-			write-loadError;	
-		}
-    }
-
-    return $retVal
-}
-
-# PSCX is not supported on Linux or OSX yet. 
-# https://github.com/Pscx/Pscx/issues/16
-# $pscxImported = Load-Module "Pscx";
-$jumpLocationImported = Load-Module "jump.location";
-$poshGitImported = Load-Module "posh-git";
-$powerLsImported = Load-Module "powerls";
-$outDiffImported = Load-Module "out-diff";
-
-# Add program folders to the path
-if ($pscxImported) {
-	Add-PathVariable "${env:ProgramFiles}\7-Zip";
-	Add-PathVariable "${env:ProgramFiles}\OpenSSH";
-	Add-PathVariable "C:\tools\mingw\bin";
-	Add-PathVariable "${env:ProgramFiles(x86)}\Microsoft SDKs\F#\4.1\Framework\v4.0";
-}
-
-# Set PowerLS as the default ls Command
-if ($powerLsImported) {
-	Set-Alias -Name ls -Value PowerLS -Option AllScope
-}
-
 # Load the psenv file
 $psenv = "$(Split-Path $profile)/psenv.ps1";
 
@@ -131,11 +65,11 @@ if (! (Test-Path $psenv)) {
 
 . $psenv;
 
-function findCloudFolder($cloudName) {
+function findFolder($folderName) {
 	$basicDrive = $null;
 
 	foreach ($drive in "~", "C:", "D:") {
-		if (Test-Path "$drive/$cloudName") {
+		if (Test-Path "$drive/$folderName") {
 			$basicDrive = $drive;
 
 			break;
@@ -143,7 +77,7 @@ function findCloudFolder($cloudName) {
 	}
 
 	if ($basicDrive -ne $null) {
-		return "$basicDrive/$cloudName";
+		return "$basicDrive/$folderName";
 	}
 
 	if ($isNotWindows) {
@@ -153,7 +87,7 @@ function findCloudFolder($cloudName) {
 			if (Test-Path $folderName) {
 				# Using foreach here instead of piping to %, because breaking in a % pipe stops the function itself, not the %.
 				foreach ($drive in gci "/media/$username") {
-					if (Test-Path "$($drive.FullName)/$cloudName") {
+					if (Test-Path "$($drive.FullName)/$folderName") {
 						$drivePath = $drive.FullName;
 
 						break;
@@ -161,7 +95,7 @@ function findCloudFolder($cloudName) {
 				}
 
 				if ($drivePath -ne $null) {
-					return "$drivePath/$cloudName";
+					return "$drivePath/$folderName";
 				}
 			}
 
@@ -175,9 +109,10 @@ function findCloudFolder($cloudName) {
 	return $null;
 }
 
-# Find OneDrive and Dropbox
-$onedrive = findCloudFolder "OneDrive";
-$dropbox = findCloudFolder "Dropbox";
+# Find OneDrive, Dropbox and Source folders
+$onedrive = findFolder "OneDrive";
+$dropbox = findFolder "Dropbox";
+$source = findFolder "source";
 
 # Function to reset colors when they get messed up by some program (e.g. react native)
 function Reset-Colors {
@@ -323,21 +258,136 @@ if (-not $isNotWindows) {
 # https://news.ycombinator.com/item?id=12991690
 $PSDefaultParameterValues["Out-File:Encoding"]="utf8"
 
+# https://gist.github.com/ecampidoglio/1635952
+function Out-Diff {
+	<#
+	.Synopsis
+		Redirects a Universal DIFF encoded text from the pipeline to the host using colors to highlight the differences.
+	.Description
+		Helper function to highlight the differences in a Universal DIFF text using color coding.
+	.Parameter InputObject
+		The text to display as Universal DIFF.
+	#>
+	[CmdletBinding()]
+	param(
+		[Parameter(Mandatory=$true, ValueFromPipeline=$true)]
+		[PSObject]$InputObject
+	)
+    Process {
+        $contentLine = $InputObject | Out-String
+        if ($contentLine -match "^Index:") {
+            Write-Host $contentLine -ForegroundColor Cyan -NoNewline
+        } elseif ($contentLine -match "^(\+|\-|\=){3}") {
+            Write-Host $contentLine -ForegroundColor Gray -NoNewline
+        } elseif ($contentLine -match "^\@{2}") {
+            Write-Host $contentLine -ForegroundColor Gray -NoNewline
+        } elseif ($contentLine -match "^\+") {
+            Write-Host $contentLine -ForegroundColor Green -NoNewline
+        } elseif ($contentLine -match "^\-") {
+            Write-Host $contentLine -ForegroundColor Red -NoNewline
+        } else {
+            Write-Host $contentLine -NoNewline
+        }
+    }
+}
+
+# https://github.com/JRJurman/PowerLS
+function PowerLS {
+	<#
+	.Synopsis
+	Powershell unix-like ls
+	Written by Jesse Jurman (JRJurman)
+
+	.Description
+	A colorful ls
+
+	.Parameter Redirect
+	The first month to display.
+
+	.Example
+	# List the current directory
+	PowerLS
+
+	.Example
+	# List the parent directory
+	PowerLS ../
+	#>
+  param(
+    [string]$redirect = "."
+  )
+    write-host "" # add newline at top
+
+    # get the console buffersize
+    $buffer = Get-Host
+    $bufferwidth = $buffer.ui.rawui.buffersize.width
+
+    # get all the files and folders
+    $childs = Get-ChildItem $redirect
+
+    # get the longest string and get the length
+    $lnStr = $childs | select-object Name | sort-object { "$_".length } -descending | select-object -first 1
+    $len = $lnStr.name.length
+
+    # keep track of how long our line is so far
+    $count = 0
+
+    # extra space to give some breather space
+    $breather = 4
+
+    # for every element, print the line
+    foreach ($e in $childs) {
+
+      $newName = $e.name + (" "*($len - $e.name.length+$breather))
+      $count += $newName.length
+
+      # determine color we should be printing
+      # Blue for folders, Green for files, and Gray for hidden files
+      if (($newName -match "^\..*$") -and (Test-Path ($redirect + "\" + $e) -pathtype container)) { #hidden folders
+        $newName = $e.name + "\" + (" "*($len - $e.name.length+$breather - 1))
+        write-host $newName -nonewline -foregroundcolor darkcyan
+      }
+      elseif (Test-Path ($redirect + "\" + $e) -pathtype container) { #normal folders
+        $newName = $e.name + "\" + (" "*($len - $e.name.length+$breather - 1))
+        write-host $newName -nonewline -foregroundcolor cyan
+      }
+      elseif ($newName -match "^\..*$") { #hidden files
+        write-host $newName -nonewline -foregroundcolor darkgray
+      }
+      elseif ($newName -match "\.[^\.]*") { #normal files
+        write-host $newName -nonewline -foregroundcolor darkyellow
+      }
+      else { #others...
+        write-host $newName -nonewline -foregroundcolor gray
+      }
+
+      if ( $count -ge ($bufferwidth - ($len+$breather)) ) {
+        write-host ""
+        $count = 0
+      }
+    }
+
+    write-host "" # add newline at bottom
+    write-host "" # add newline at bottom
+}
+
+# Set PowerLS as the default ls Command
+Set-Alias -Name ls -Value PowerLS -Option AllScope
+
 # TODO: Turn these custom scripts into modules that can be loaded without hardcoded paths.
 
 # Add an alias for the Powershell-Utils bogpaddle.ps1 script.
-Set-Alias -Name bogpaddle -Value 'D:\source\powershell-utils\bogpaddle.ps1' -Option AllScope
+Set-Alias -Name bogpaddle -Value '$source\powershell-utils\bogpaddle.ps1' -Option AllScope
 # Add an alias for the Powershell-Utils namegen.ps1 script.
-Set-Alias -Name namegen -Value 'D:\source\powershell-utils\namegen.ps1' -Option AllScope
+Set-Alias -Name namegen -Value '$source\powershell-utils\namegen.ps1' -Option AllScope
 # Add an alias for the Powershell-Utils kmsignalr.ps1 script.
-Set-Alias -Name kmsignalr -Value 'D:\source\powershell-utils\kmsignalr.ps1' -Option AllScope
+Set-Alias -Name kmsignalr -Value '$source\powershell-utils\kmsignalr.ps1' -Option AllScope
 # Add an alias for the Powershell-Utils download-video.ps1 script.
-Set-Alias -Name download-video -Value 'D:\source\powershell-utils\download-video.ps1' -Option AllScope
+Set-Alias -Name download-video -Value '$source\powershell-utils\download-video.ps1' -Option AllScope
 # Add an alias for the Powershell-Utils guid.ps1 script.
-Set-Alias -Name guid -Value 'D:\source\powershell-utils\guid.ps1' -Option AllScope
+Set-Alias -Name guid -Value '$source\powershell-utils\guid.ps1' -Option AllScope
 # Add an alias for the Powershell-Utils bcrypt.ps1 script.
-Set-Alias -Name bcrypt -Value 'D:\source\powershell-utils\bcrypt.ps1' -Option AllScope
+Set-Alias -Name bcrypt -Value '$source\powershell-utils\bcrypt.ps1' -Option AllScope
 # Add an alias for the Powershell-Utils now.ps1 script.
-Set-Alias -Name now -Value 'D:\source\powershell-utils\now.ps1' -Option AllScope
+Set-Alias -Name now -Value '$source\powershell-utils\now.ps1' -Option AllScope
 # Add an alias for the Powershell-Utils template.ps1 script.
-Set-Alias -Name template -Value 'D:\source\powershell-utils\template.ps1' -Option AllScope
+Set-Alias -Name template -Value '$source\powershell-utils\template.ps1' -Option AllScope
