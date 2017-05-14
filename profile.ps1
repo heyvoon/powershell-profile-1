@@ -373,21 +373,19 @@ function PowerLS {
 # Set PowerLS as the default ls Command
 Set-Alias -Name ls -Value PowerLS -Option AllScope
 
-# TODO: Turn these custom scripts into modules that can be loaded without hardcoded paths.
-
 # Add an alias for the Powershell-Utils bogpaddle.ps1 script.
-Set-Alias -Name bogpaddle -Value '$source\powershell-utils\bogpaddle.ps1' -Option AllScope
+Set-Alias -Name bogpaddle -Value "$source\powershell-utils\bogpaddle.ps1" -Option AllScope
 # Add an alias for the Powershell-Utils namegen.ps1 script.
-Set-Alias -Name namegen -Value '$source\powershell-utils\namegen.ps1' -Option AllScope
+Set-Alias -Name namegen -Value "$source\powershell-utils\namegen.ps1" -Option AllScope
 # Add an alias for the Powershell-Utils kmsignalr.ps1 script.
-Set-Alias -Name kmsignalr -Value '$source\powershell-utils\kmsignalr.ps1' -Option AllScope
+Set-Alias -Name kmsignalr -Value "$source\powershell-utils\kmsignalr.ps1" -Option AllScope
 # Add an alias for the Powershell-Utils download-video.ps1 script.
-Set-Alias -Name download-video -Value '$source\powershell-utils\download-video.ps1' -Option AllScope
+Set-Alias -Name download-video -Value "$source\powershell-utils\download-video.ps1" -Option AllScope
 # Add an alias for the Powershell-Utils guid.ps1 script.
-Set-Alias -Name guid -Value '$source\powershell-utils\guid.ps1' -Option AllScope
+Set-Alias -Name guid -Value "$source\powershell-utils\guid.ps1" -Option AllScope
 # Add an alias for the Powershell-Utils bcrypt.ps1 script.
-Set-Alias -Name bcrypt -Value '$source\powershell-utils\bcrypt.ps1' -Option AllScope
+Set-Alias -Name bcrypt -Value "$source\powershell-utils\bcrypt.ps1" -Option AllScope
 # Add an alias for the Powershell-Utils now.ps1 script.
-Set-Alias -Name now -Value '$source\powershell-utils\now.ps1' -Option AllScope
+Set-Alias -Name now -Value "$source\powershell-utils\now.ps1" -Option AllScope
 # Add an alias for the Powershell-Utils template.ps1 script.
-Set-Alias -Name template -Value '$source\powershell-utils\template.ps1' -Option AllScope
+Set-Alias -Name template -Value "$source\powershell-utils\template.ps1" -Option AllScope
