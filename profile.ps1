@@ -52,6 +52,9 @@ function prompt {
 		" => ";
 	}
 
+	# Yarn and msbuild have a habit of corrupting console colors when ctrl+c-ing them. Reset colors on each prompt.
+	[Console]::ResetColor();
+
 	$LASTEXITCODE = $origLastExitCode;
 }
 
