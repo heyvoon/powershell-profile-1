@@ -5,9 +5,9 @@ function Coalesce($a, $b) { if ($a -ne $null) { $a } else { $b } }
 
 # Easily add a property to a custom object
 function AddPropTo-Object($obj, $propName, $value) {
-	$obj | Add-Member -type NoteProperty -name $propName -value $value;
+    $obj | Add-Member -type NoteProperty -name $propName -value $value;
 
-	return $obj;
+    return $obj;
 }
 
 Set-Alias -name ?? -value Coalesce;
@@ -19,15 +19,15 @@ $profileFolder = split-path $profile;
 $username = ?? $env:username $(whoami);
 
 function getMachineType() {
-	if ($IsLinux) {
-		return "Linux";
-	};
+    if ($IsLinux) {
+        return "Linux";
+    };
 
-	if ($IsOSX) {
-		return "macOS";
-	}
+    if ($IsOSX) {
+        return "macOS";
+    }
 
-	return "Windows";
+    return "Windows";
 }
 
 $machineType = getMachineType;
@@ -36,80 +36,81 @@ $isNotWindows = $IsLinux -or $IsOSX;
 
 # Customize the posh-git prompt to only show the current folder name + git status
 function prompt {
-	$origLastExitCode = $LASTEXITCODE;
-	$folderName = (get-item $pwd).Name;
-	# $emoji = [char]::ConvertFromUtf32(0x1F914);  
+    $origLastExitCode = $LASTEXITCODE;
+    $folderName = (get-item $pwd).Name;
+    # $emoji = [char]::ConvertFromUtf32(0x1F914);  
 
-	if ($isNotWindows) {
-		# A bug in PSReadline on .NET Core makes all colored write-host output in prompt 
-		# function, including write-vcsstatus, echo twice.
-		# https://github.com/PowerShell/PowerShell/issues/1897
-		# https://github.com/lzybkr/PSReadLine/issues/468
-		"$folderName => ";
-	} else {
-		write-host "$folderName" -nonewline -foregroundcolor green;
-		Write-VcsStatus;
-		" => ";
-	}
+    if ($isNotWindows) {
+        # A bug in PSReadline on .NET Core makes all colored write-host output in prompt 
+        # function, including write-vcsstatus, echo twice.
+        # https://github.com/PowerShell/PowerShell/issues/1897
+        # https://github.com/lzybkr/PSReadLine/issues/468
+        "$folderName => ";
+    }
+    else {
+        write-host "$folderName" -nonewline -foregroundcolor green;
+        Write-VcsStatus;
+        " => ";
+    }
 
-	# Yarn and msbuild have a habit of corrupting console colors when ctrl+c-ing them. Reset colors on each prompt.
-	[Console]::ResetColor();
+    # Yarn and msbuild have a habit of corrupting console colors when ctrl+c-ing them. Reset colors on each prompt.
+    [Console]::ResetColor();
 
-	$LASTEXITCODE = $origLastExitCode;
+    $LASTEXITCODE = $origLastExitCode;
 }
 
 # Load the psenv file
 $psenv = "$(Split-Path $profile)/psenv.ps1";
 
 if (! (Test-Path $psenv)) {
-	# Create the env file and swallow the output
-	New-Item $psenv | out-null;
+    # Create the env file and swallow the output
+    New-Item $psenv | out-null;
 }
 
 . $psenv;
 
 function findFolder($folderName) {
-	$basicDrive = $null;
+    $basicDrive = $null;
 
-	foreach ($drive in "~", "C:", "D:") {
-		if (Test-Path "$drive/$folderName") {
-			$basicDrive = $drive;
+    foreach ($drive in "~", "C:", "D:") {
+        if (Test-Path "$drive/$folderName") {
+            $basicDrive = $drive;
 
-			break;
-		}
-	}
+            break;
+        }
+    }
 
-	if ($basicDrive -ne $null) {
-		return "$basicDrive/$folderName";
-	}
+    if ($basicDrive -ne $null) {
+        return "$basicDrive/$folderName";
+    }
 
-	if ($isNotWindows) {
-		function searchTopFolder($folderName) {
-			$drivePath = $null;
+    if ($isNotWindows) {
+        function searchTopFolder($folderName) {
+            $drivePath = $null;
 
-			if (Test-Path $folderName) {
-				# Using foreach here instead of piping to %, because breaking in a % pipe stops the function itself, not the %.
-				foreach ($drive in gci "/media/$username") {
-					if (Test-Path "$($drive.FullName)/$folderName") {
-						$drivePath = $drive.FullName;
+            if (Test-Path $folderName) {
+                # Using foreach here instead of piping to %, because breaking in a % pipe stops the function itself, not the %.
+                foreach ($drive in gci "/media/$username") {
+                    if (Test-Path "$($drive.FullName)/$folderName") {
+                        $drivePath = $drive.FullName;
 
-						break;
-					}
-				}
+                        break;
+                    }
+                }
 
-				if ($drivePath -ne $null) {
-					return "$drivePath/$folderName";
-				}
-			}
+                if ($drivePath -ne $null) {
+                    return "$drivePath/$folderName";
+                }
+            }
 
-			return $null;
-		}
+            return $null;
+        }
 
-		return ?? (searchTopFolder "/media/$username") (searchTopFolder "/mnt")
-	}
+        return ?? (searchTopFolder "/media/$username") (searchTopFolder "/mnt")
+    }
 
-	# Don't set the value if it wasn't found.
-	return $null;
+    # Don't set the value if it wasn't found.
+    return $null;
 }
 
 # Find OneDrive, Dropbox and Source folders
@@ -119,22 +120,34 @@ $source = findFolder "source";
 
 # Function to reset colors when they get messed up by some program (e.g. react native)
 function Reset-Colors {
-	[Console]::ResetColor();
-	echo "Console colors have been reset.";
+    [Console]::ResetColor();
+    echo "Console colors have been reset.";
 }
 
 Set-Alias -Name resetColors -Value Reset-Colors -Option AllScope;
 
+# Sudo alias, from http://www.exitthefastlane.com/2009/08/sudo-for-powershell.html
+function elevate-process {
+    $file, [string]$arguments = $args;
+    $psi = new-object System.Diagnostics.ProcessStartInfo $file;
+    $psi.Arguments = $arguments;
+    $psi.Verb = "runas";
+    $psi.WorkingDirectory = get-location;
+    [System.Diagnostics.Process]::Start($psi);
+} 
+
+Set-Alias sudo elevate-process;
+
 # Extra PS goodies, inspired by https://github.com/mikemaccana/powershell-profile
 function uptime {
-	if ($isNotWindows) {
-		bash -c "uptime";
+    if ($isNotWindows) {
+        bash -c "uptime";
 
-		return;
-	}
+        return;
+    }
 
-    Get-WmiObject win32_operatingsystem | select csname, @{LABEL='LastBootUpTime';
-        EXPRESSION={$_.ConverttoDateTime($_.lastbootuptime)}
+    Get-WmiObject win32_operatingsystem | select csname, @{LABEL = 'LastBootUpTime';
+        EXPRESSION = {$_.ConverttoDateTime($_.lastbootuptime)}
     }
 }
 
@@ -156,16 +169,16 @@ function unarchive([string]$file, [string]$outputDir = '') {
 }
 
 # http://stackoverflow.com/questions/39148304/fuser-equivalent-in-powershell/39148540#39148540
-function fuser($relativeFile){
+function fuser($relativeFile) {
     $file = Resolve-Path $relativeFile
 
     echo "Looking for processes using $file"
 
-	if ($isNotWindows) {
-		sudo bash -c "fuser $file.Path";
+    if ($isNotWindows) {
+        sudo bash -c "fuser $file.Path";
 
-		return;
-	}
+        return;
+    }
 
     foreach ( $Process in (Get-Process)) {
         foreach ( $Module in $Process.Modules) {
@@ -196,74 +209,75 @@ function unzip ($file) {
 
 # https://gist.github.com/aroben/5542538
 function pstree {
-	$ProcessesById = @{}
-	foreach ($Process in (Get-WMIObject -Class Win32_Process)) {
-		$ProcessesById[$Process.ProcessId] = $Process
-	}
+    $ProcessesById = @{}
+    foreach ($Process in (Get-WMIObject -Class Win32_Process)) {
+        $ProcessesById[$Process.ProcessId] = $Process
+    }
 
-	$ProcessesWithoutParents = @()
-	$ProcessesByParent = @{}
-	foreach ($Pair in $ProcessesById.GetEnumerator()) {
-		$Process = $Pair.Value
+    $ProcessesWithoutParents = @()
+    $ProcessesByParent = @{}
+    foreach ($Pair in $ProcessesById.GetEnumerator()) {
+        $Process = $Pair.Value
 
-		if (($Process.ParentProcessId -eq 0) -or !$ProcessesById.ContainsKey($Process.ParentProcessId)) {
-			$ProcessesWithoutParents += $Process
-			continue
-		}
+        if (($Process.ParentProcessId -eq 0) -or !$ProcessesById.ContainsKey($Process.ParentProcessId)) {
+            $ProcessesWithoutParents += $Process
+            continue
+        }
 
-		if (!$ProcessesByParent.ContainsKey($Process.ParentProcessId)) {
-			$ProcessesByParent[$Process.ParentProcessId] = @()
-		}
-		$Siblings = $ProcessesByParent[$Process.ParentProcessId]
-		$Siblings += $Process
-		$ProcessesByParent[$Process.ParentProcessId] = $Siblings
-	}
+        if (!$ProcessesByParent.ContainsKey($Process.ParentProcessId)) {
+            $ProcessesByParent[$Process.ParentProcessId] = @()
+        }
+        $Siblings = $ProcessesByParent[$Process.ParentProcessId]
+        $Siblings += $Process
+        $ProcessesByParent[$Process.ParentProcessId] = $Siblings
+    }
 
-	function Show-ProcessTree([UInt32]$ProcessId, $IndentLevel) {
-		$Process = $ProcessesById[$ProcessId]
-		$Indent = " " * $IndentLevel
-		if ($Process.CommandLine) {
-			$Description = $Process.CommandLine
-		} else {
-			$Description = $Process.Caption
-		}
+    function Show-ProcessTree([UInt32]$ProcessId, $IndentLevel) {
+        $Process = $ProcessesById[$ProcessId]
+        $Indent = " " * $IndentLevel
+        if ($Process.CommandLine) {
+            $Description = $Process.CommandLine
+        }
+        else {
+            $Description = $Process.Caption
+        }
 
-		Write-Output ("{0,6}{1} {2}" -f $Process.ProcessId, $Indent, $Description)
-		foreach ($Child in ($ProcessesByParent[$ProcessId] | Sort-Object CreationDate)) {
-			Show-ProcessTree $Child.ProcessId ($IndentLevel + 4)
-		}
-	}
+        Write-Output ("{0,6}{1} {2}" -f $Process.ProcessId, $Indent, $Description)
+        foreach ($Child in ($ProcessesByParent[$ProcessId] | Sort-Object CreationDate)) {
+            Show-ProcessTree $Child.ProcessId ($IndentLevel + 4)
+        }
+    }
 
-	Write-Output ("{0,6} {1}" -f "PID", "Command Line")
-	Write-Output ("{0,6} {1}" -f "---", "------------")
+    Write-Output ("{0,6} {1}" -f "PID", "Command Line")
+    Write-Output ("{0,6} {1}" -f "---", "------------")
 
-	foreach ($Process in ($ProcessesWithoutParents | Sort-Object CreationDate)) {
-		Show-ProcessTree $Process.ProcessId 0
-	}
+    foreach ($Process in ($ProcessesWithoutParents | Sort-Object CreationDate)) {
+        Show-ProcessTree $Process.ProcessId 0
+    }
 }
 
 # Unix-touch
 function unixtouch($file) {
-	if ($isNotWindows) {
-		bash -c "touch $file";
+    if ($isNotWindows) {
+        bash -c "touch $file";
 
-		return;
-	}
+        return;
+    }
 
-  	"" | Out-File $file -Encoding ASCII
+    "" | Out-File $file -Encoding ASCII
 }
 
 if (-not $isNotWindows) {
-	Set-Alias -Name touch -Value unixtouch -Option AllScope
+    Set-Alias -Name touch -Value unixtouch -Option AllScope
 }
 
 # Produce UTF-8 by default
 # https://news.ycombinator.com/item?id=12991690
-$PSDefaultParameterValues["Out-File:Encoding"]="utf8"
+$PSDefaultParameterValues["Out-File:Encoding"] = "utf8"
 
 # https://gist.github.com/ecampidoglio/1635952
 function Out-Diff {
-	<#
+    <#
 	.Synopsis
 		Redirects a Universal DIFF encoded text from the pipeline to the host using colors to highlight the differences.
 	.Description
@@ -271,24 +285,29 @@ function Out-Diff {
 	.Parameter InputObject
 		The text to display as Universal DIFF.
 	#>
-	[CmdletBinding()]
-	param(
-		[Parameter(Mandatory=$true, ValueFromPipeline=$true)]
-		[PSObject]$InputObject
-	)
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+        [PSObject]$InputObject
+    )
     Process {
         $contentLine = $InputObject | Out-String
         if ($contentLine -match "^Index:") {
             Write-Host $contentLine -ForegroundColor Cyan -NoNewline
-        } elseif ($contentLine -match "^(\+|\-|\=){3}") {
+        }
+        elseif ($contentLine -match "^(\+|\-|\=){3}") {
             Write-Host $contentLine -ForegroundColor Gray -NoNewline
-        } elseif ($contentLine -match "^\@{2}") {
+        }
+        elseif ($contentLine -match "^\@{2}") {
             Write-Host $contentLine -ForegroundColor Gray -NoNewline
-        } elseif ($contentLine -match "^\+") {
+        }
+        elseif ($contentLine -match "^\+") {
             Write-Host $contentLine -ForegroundColor Green -NoNewline
-        } elseif ($contentLine -match "^\-") {
+        }
+        elseif ($contentLine -match "^\-") {
             Write-Host $contentLine -ForegroundColor Red -NoNewline
-        } else {
+        }
+        else {
             Write-Host $contentLine -NoNewline
         }
     }
@@ -296,7 +315,7 @@ function Out-Diff {
 
 # https://github.com/JRJurman/PowerLS
 function PowerLS {
-	<#
+    <#
 	.Synopsis
 	Powershell unix-like ls
 	Written by Jesse Jurman (JRJurman)
@@ -315,9 +334,9 @@ function PowerLS {
 	# List the parent directory
 	PowerLS ../
 	#>
-  param(
-    [string]$redirect = "."
-  )
+    param(
+        [string]$redirect = "."
+    )
     write-host "" # add newline at top
 
     # get the console buffersize
@@ -340,33 +359,38 @@ function PowerLS {
     # for every element, print the line
     foreach ($e in $childs) {
 
-      $newName = $e.name + (" "*($len - $e.name.length+$breather))
-      $count += $newName.length
+        $newName = $e.name + (" " * ($len - $e.name.length + $breather))
+        $count += $newName.length
 
-      # determine color we should be printing
-      # Blue for folders, Green for files, and Gray for hidden files
-      if (($newName -match "^\..*$") -and (Test-Path ($redirect + "\" + $e) -pathtype container)) { #hidden folders
-        $newName = $e.name + "\" + (" "*($len - $e.name.length+$breather - 1))
-        write-host $newName -nonewline -foregroundcolor darkcyan
-      }
-      elseif (Test-Path ($redirect + "\" + $e) -pathtype container) { #normal folders
-        $newName = $e.name + "\" + (" "*($len - $e.name.length+$breather - 1))
-        write-host $newName -nonewline -foregroundcolor cyan
-      }
-      elseif ($newName -match "^\..*$") { #hidden files
-        write-host $newName -nonewline -foregroundcolor darkgray
-      }
-      elseif ($newName -match "\.[^\.]*") { #normal files
-        write-host $newName -nonewline -foregroundcolor darkyellow
-      }
-      else { #others...
-        write-host $newName -nonewline -foregroundcolor gray
-      }
+        # determine color we should be printing
+        # Blue for folders, Green for files, and Gray for hidden files
+        if (($newName -match "^\..*$") -and (Test-Path ($redirect + "\" + $e) -pathtype container)) {
+            #hidden folders
+            $newName = $e.name + "\" + (" " * ($len - $e.name.length + $breather - 1))
+            write-host $newName -nonewline -foregroundcolor darkcyan
+        }
+        elseif (Test-Path ($redirect + "\" + $e) -pathtype container) {
+            #normal folders
+            $newName = $e.name + "\" + (" " * ($len - $e.name.length + $breather - 1))
+            write-host $newName -nonewline -foregroundcolor cyan
+        }
+        elseif ($newName -match "^\..*$") {
+            #hidden files
+            write-host $newName -nonewline -foregroundcolor darkgray
+        }
+        elseif ($newName -match "\.[^\.]*") {
+            #normal files
+            write-host $newName -nonewline -foregroundcolor darkyellow
+        }
+        else {
+            #others...
+            write-host $newName -nonewline -foregroundcolor gray
+        }
 
-      if ( $count -ge ($bufferwidth - ($len+$breather)) ) {
-        write-host ""
-        $count = 0
-      }
+        if ( $count -ge ($bufferwidth - ($len + $breather)) ) {
+            write-host ""
+            $count = 0
+        }
     }
 
     write-host "" # add newline at bottom
